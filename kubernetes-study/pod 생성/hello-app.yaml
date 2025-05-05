@@ -1,0 +1,46 @@
+# pod 생성 및 환경 변수 전달 방법 실습 예제
+# Pod API 버전 : v1
+# Pod 리소스 종류 : Pod
+# Pod 이름 : hello-app
+# pod 네임스페이스 : default - metadata에 없으면 기본 default 네임스페이스에 생성
+# 컨테이너 이름 : hello-app
+# 컨테이너 이미지 : yoonjeong/hello-app:1.0
+# 컨테이너 포트 : 8080
+# 환경 변수 : POD_NAME, POD_IP, POD_NAMESPACE, POD_NODE_NAME
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-app
+  namespace: default
+spec:
+  containers:
+  - name: hello-app
+    image: yoonjeong/hello-app:1.0
+    ports:
+    - containerPort: 8080
+    env:
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: POD_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: POD_NODE_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.hostIP
+    - name: STUDENT_NAME
+      value: "전윤호"
+    - name: GREETING
+      value: "Hello, Kubernetes! $(STUDENT_NAME)"
