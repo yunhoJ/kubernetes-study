@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: readness-probe-svc
+  labels:
+    app: test
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: test
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: readness-probe-pod
+  labels:
+    app: test
+spec:
+  containers:
+    - name: readness-probe-pod
+      image: yoonjeong/unhealthy-app:1.0
+      ports:
+        - containerPort: 8080
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      readinessProbe:
+        exec:
+          command: 
+            - ls
+            - /var/ready
+        initialDelaySeconds: 60
+        periodSeconds: 5
+        successThreshold: 1
+        failureThreshold: 1
+        timeoutSeconds: 10
+
+
+

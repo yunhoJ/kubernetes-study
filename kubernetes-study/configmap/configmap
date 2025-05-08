@@ -1,0 +1,54 @@
+
+apiVersion: v1
+data:
+  MESSAGE: Hello
+  STUDENT_NAME: 전윤호
+kind: ConfigMap
+metadata:
+  name: greeting
+  namespace: default
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-app
+  namespace: default
+spec:
+  containers:
+    - name: hello-app
+      image: yoonjeong/hello-app:1.0
+      ports:
+        - containerPort: 8080
+      env:
+        - name: STUDENT_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: greeting
+              key: STUDENT_NAME
+        - name: MESSAGE
+          valueFrom:
+            configMapKeyRef:
+              name: greeting
+              key: MESSAGE
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-app
+  namespace: default
+spec:
+  containers:
+    - name: hello-app
+      image: yoonjeong/hello-app:1.0
+      ports:
+        - containerPort: 8080
+      envFrom:
+        - configMapRef:
+            name: greeting
+      env:
+        - name: GREETING
+          value: $(MESSAGE) $(STUDENT_NAME)
+              
+
+

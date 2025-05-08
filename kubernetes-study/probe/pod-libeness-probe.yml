@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unhealthy
+  labels:
+    app: test
+spec:
+  containers:
+    - name: unhealthy
+      image: yoonjeong/unhealthy:1.0
+      ports:
+        - containerPort: 8080
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      livenessProbe:
+        httpGet:
+          path: / 
+          port: 8080
+        initialDelaySeconds: 60 # 컨테이너 시작 후 60초 뒤 프로브 시작 
+        periodSeconds: 5 #5초 주기 
+        successThreshold: 1 # 성공시 실패회수 초기화 
+        failureThreshold: 1 # 실패시 재시작 임계값 
+        timeoutSeconds: 10 # 타임아웃 10초 
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: healthy
+  labels:
+    app: test
+spec:
+  containers:
+    - name: healthy
+      image: yoonjeong/healthy:1.0
+      ports:
+        - containerPort: 8080
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      livenessProbe:
+        httpGet:
+          path: / 
+          port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          successThreshold: 1
+          failureThreshold: 1
+          timeoutSeconds: 10
