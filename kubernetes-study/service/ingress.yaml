@@ -1,0 +1,307 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: snackbar
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home
+  namespace: snackbar
+  labels:
+    service: home
+    project: snackbar
+spec:
+  selector:
+    app: home
+    project: snackbar
+  type: NodePort # gcp에서 ingress 사용 시  nodeport 사용 필요 
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      nodePort: 30000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order
+  namespace: snackbar
+  labels:
+    service: order
+    project: snackbar
+spec:
+  selector:
+    app: order
+    project: snackbar
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      nodePort: 30001
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  namespace: snackbar
+  labels:
+    service: payment
+    project: snackbar
+spec:
+  selector:
+    app: payment
+    project: snackbar
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      nodePort: 30002
+
+--- 
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: home
+  namespace: snackbar
+  labels:
+    app: home
+    project: snackbar
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: home
+      project: snackbar
+  template:
+    metadata:
+      labels:
+        app: home
+        project: snackbar
+    spec:
+      containers:
+        - name: home
+          image: yoonjeong/home:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+
+--- 
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: order
+  namespace: snackbar
+  labels:
+    app: order
+    project: snackbar
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order
+      project: snackbar
+  template:
+    metadata:
+      labels:
+        app: order 
+        project: snackbar
+    spec:
+      containers:
+        - name: order
+          image: yoonjeong/order:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+--- 
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: payment
+  namespace: snackbar
+  labels:
+    app: payment
+    project: snackbar
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payment
+      project: snackbar
+  template:
+    metadata:
+      labels:
+        app: payment
+        project: snackbar
+    spec:
+      containers:
+        - name: payment
+          image: yoonjeong/payment:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+
+--- #service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery
+  namespace: other-snackbar
+  labels:
+    service: delivery
+    project: snackbar_project
+spec:
+  type: ClusterIP
+  selector:
+    service: delivery
+    project: snackbar_project
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delivery
+  namespace: other-snackbar
+  labels:
+    service: delivery
+    project: snackbar_project
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      service: delivery
+      project: snackbar_project
+  template:
+    metadata:
+      labels:
+        service: delivery
+        project: snackbar_project
+    spec:
+      containers:
+        - name: delivery
+          image: yoonjeong/snackbar-delivery:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+---
+# ingress multiple host
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: snackbar
+  namespace: snackbar
+  labels:
+    app: snackbar
+    project: snackbar
+spec:
+  rules:
+    - host: order.snackbar.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: order
+                port:
+                  number: 80
+    - host: payment.snackbar.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: payment
+                port:
+                  number: 80
+    - host: delivery.snackbar.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: delivery
+                port:
+                  number: 80
+  defaultBackend:
+    service:
+      name: home
+      port:
+        number: 80
+---
+# ingress single host
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: snackbar_single_host
+  namespace: snackbar
+  labels:
+    app: snackbar
+    project: snackbar
+spec:
+  defaultBackend:
+    service:
+      name: home
+      port:
+        number: 80
+  rules:
+      http:
+        paths:
+          - path: /order
+            pathType: Prefix
+            backend:
+              service:
+                name: order
+                port:
+                  number: 80
+          - path: /payment
+            pathType: Prefix
+            backend:
+              service:
+                name: payment
+                port:
+                  number: 80
+          - path: /delivery
+            pathType: Prefix
+            backend:
+              service:
+                name: delivery
+                port:
+                  number: 80
