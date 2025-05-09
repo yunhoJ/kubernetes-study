@@ -1,0 +1,304 @@
+# order service
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-app
+  namespace: order
+  labels:
+    app: order
+spec:
+  selector:
+    app: order
+    version: "1.0"
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      nodePort: 30001
+---
+# payment service
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-app
+  namespace: payment
+  labels:
+    app: payment
+spec:
+  selector:
+    app: payment
+    version: "1.0"
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      nodePort: 30002
+---
+# Delivery service
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery-app
+  namespace: delivery
+  labels:
+    app: delivery
+spec:
+  selector:
+    app: delivery
+    version: "1.0"
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      nodePort: 30003
+---
+# order -> delivery 네임스페이스의 delivery-app 서비스 호출을 위한 service 생성
+# external service
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery
+  namespace: order
+  labels:
+    app: order
+spec:
+  type: ExternalName
+  externalName: delivery-app.delivery.svc.cluster.local
+  ports:
+    - port: 80
+
+--- 
+# order -> payment 네임스페이스의 payment-app 서비스 호출을 위한 service 생성
+# external service
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  namespace: order
+  labels:
+    app: order
+spec:
+  type: ExternalName
+  externalName: payment-app.payment.svc.cluster.local
+  ports:
+    - port: 80
+
+--- 
+# configmap 생성
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: port-config
+  namespace: order
+data:
+  ORDER_HTTP_PORT: "8080"
+
+---
+# configmap 생성
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: port-config
+  namespace: payment
+data:
+  PAYMENT_HTTP_PORT: "8080"
+
+---
+# configmap 생성
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: port-config
+  namespace: delivery
+data:
+  DELIVERY_HTTP_PORT: "8080"
+
+---
+# order deployment 생성
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-1.0
+  namespace: order
+  labels:
+    app: order
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order
+      version: "1.0"
+  template:
+    metadata:
+      labels:
+        app: order
+        version: "1.0"
+    spec:
+      containers:
+        - name: order
+          image: yoonjeong/snackbar-order:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: port-config
+                  key: ORDER_HTTP_PORT
+                  
+---
+# payment deployment 생성
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-1.0
+  namespace: payment
+  labels:
+    app: payment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payment
+      version: "1.0"
+  template:
+    metadata:
+      labels:
+        app: payment
+        version: "1.0"
+    spec:
+      containers:
+        - name: payment
+          image: yoonjeong/snackbar-payment:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: port-config
+                  key: PAYMENT_HTTP_PORT
+                  
+--- 
+# delivery deployment 생성
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delivery-1.0
+  namespace: delivery
+  labels:
+    app: delivery   
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: delivery
+      version: "1.0"
+  template:
+    metadata:
+      labels:
+        app: delivery
+        version: "1.0"
+    spec:
+      containers:
+        - name: delivery
+          image: yoonjeong/snackbar-delivery:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: port-config
+                  key: DELIVERY_HTTP_PORT
+                
+---
+#인그레스 생성 
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: snackbar
+  namespace: order
+spec:
+  rules:
+    - host: order.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: order-app
+                port:
+                  number: 80
+
+--- 
+#블루그린 배포
+# order deployment 생성
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-2.0
+  namespace: order
+  labels:
+    app: order
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order
+      version: "2.0"
+  template:
+    metadata:
+      labels:
+        app: order
+        version: "2.0"
+    spec:
+      containers:
+        - name: order
+          image: yoonjeong/snackbar-order:2.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: port-config
+                  key: ORDER_HTTP_PORT
+# order deploymet 배포후  service selecter 변경 version: "2.0" 으로 변경
+# order service 변경
+# kubectl set selector service order-app -n order app=order,version=2.0
+
+
+
